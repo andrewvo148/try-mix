@@ -11,7 +11,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Shopify/sarama"
+	"github.com/IBM/sarama"
 	"github.com/google/uuid"
 )
 
@@ -147,7 +147,7 @@ func (f EventHandlerFunc) Handle(ctx context.Context, event Event) error {
 }
 
 // NewEventConsumer creates a new event consumer
-func NewEventConsumer(brokers []string, groupID string, topics []string, handler map[EventType]EventHandler) (*EventConsumer, error) {
+func NewEventConsumer(brokers []string, groupID string, topics []string) (*EventConsumer, error) {
 	config := sarama.NewConfig()
 	config.Consumer.Return.Errors = true
 	config.Consumer.Group.Rebalance.Strategy = sarama.BalanceStrategyRoundRobin
@@ -165,7 +165,7 @@ func NewEventConsumer(brokers []string, groupID string, topics []string, handler
 }
 
 // RegisterEventHandler registers a handler for a specific event type
-func (c *EventConsumer) RegisterEventHandler(eventType EventType, handler EventHandler) {
+func (c *EventConsumer) RegisterHandler(eventType EventType, handler EventHandler) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.handler[eventType] = handler
@@ -274,7 +274,7 @@ func (h *consumerGroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession,
 
 func main() {
 	// Configuration
-	brokers := []string{"localhost:9092"}
+	brokers := []string{"localhost:29092"}
 	topic := "bussiness-events"
 	consumerGroup := "user-service"
 
@@ -319,19 +319,51 @@ func main() {
 		}
 	}()
 
-
 	// Create consumer
 
+	// Create consumer
 	consumer, err := NewEventConsumer(brokers, consumerGroup, []string{topic})
 	if err != nil {
-		log.Fatalf("Failed to create event consumer: %v", err)
+		log.Fatalf("Failed to create consumer: %v", err)
 	}
 
-	consumer.RegisterEventHandler(UserCreated, EventHandlerFunc(func(ctx context.Context, event Event) error {
-       var userData UserCreatedEvent
-	   if data, err := json.Marshal(event.Data); err == nil {
-		
-	   }
+	// Register handlers
+	consumer.RegisterHandler(UserCreated, EventHandlerFunc(func(ctx context.Context, event Event) error {
+		var userData UserCreatedEvent
+		if data, err := json.Marshal(event.Data); err == nil {
+			if err := json.Unmarshal(data, &userData); err != nil {
+				return fmt.Errorf("error unmarshaling user data: %w", err)
+			}
+			log.Printf("User created: %s (%s %s)", userData.UserID, userData.FirstName, userData.LastName)
+			return nil
+		}
+		return fmt.Errorf("error processing user data")
 	}))
+
+	consumer.RegisterHandler(OrderPlaced, EventHandlerFunc(func(ctx context.Context, event Event) error {
+		var orderData OrderPlacedEvent
+		if data, err := json.Marshal(event.Data); err == nil {
+			if err := json.Unmarshal(data, &orderData); err != nil {
+				return fmt.Errorf("error unmarshaling order data: %w", err)
+			}
+			log.Printf("Order placed: %s for user %s with total amount %.2f",
+				orderData.OrderID, orderData.UserID, orderData.TotalAmount)
+			return nil
+		}
+		return fmt.Errorf("error processing order data")
+	}))
+
+	// Start consumer in a goroutine
+	go func() {
+		if err := consumer.Start(ctx); err != nil {
+			log.Fatalf("Failed to start consumer: %v", err)
+		}
+	}()
+
+	// Wait for termination signal
+	<-signals
+	log.Println("Shutting down...")
+	cancel()
+	consumer.Stop()
 
 }
