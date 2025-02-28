@@ -1,13 +1,11 @@
-module event
+module order-service
 
-go 1.23
-
-toolchain go1.23.2
+go 1.21
 
 require (
-	github.com/IBM/sarama v1.45.0
-	github.com/google/uuid v1.6.0
-	github.com/stretchr/testify v1.10.0
+	github.com/Shopify/sarama v1.38.1
+	github.com/gin-gonic/gin v1.9.1
+	github.com/google/uuid v1.3.0
 )
 
 require (
