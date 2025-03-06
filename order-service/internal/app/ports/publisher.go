@@ -2,6 +2,6 @@ package ports
 
 import "context"
 
-type Publisher interface {
+type EventPublisher interface {
 	Publish(ctx context.Context, topic string, event interface{}) error
 }

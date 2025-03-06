@@ -98,3 +98,13 @@ func (o *Order) RemoveItem(itemID uuid.UUID) bool {
 	}
 	return false
 }
+
+
+// Calculate total order value
+func (o *Order) CalculateTotalPrice() float64 {
+	total := 0.0
+	for _, item := range o.Items {
+		total += item.Price * float64(item.Quantity)
+	}
+	return total
+}

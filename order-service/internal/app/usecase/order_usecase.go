@@ -2,6 +2,8 @@ package usecase
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"order-service/internal/app/ports"
 	"order-service/internal/domain"
 	"order-service/internal/event"
@@ -12,23 +14,28 @@ import (
 
 // OrderUsecase implements the order business logic
 type OrderUseCase struct {
-	orderRepo      ports.OrderRepository
-	eventPublisher ports.Publisher
+	uow            ports.UnitOfWork
+	eventPublisher ports.EventPublisher
 }
 
 // NewOrderUseCase creates a new order use case
 func NewOrderUseCase(
-	orderRepo ports.OrderRepository,
-	eventPublisher ports.Publisher,
+	uow ports.UnitOfWork,
+	eventPublisher ports.EventPublisher,
 ) *OrderUseCase {
 	return &OrderUseCase{
-		orderRepo:      orderRepo,
+		uow:            uow,
 		eventPublisher: eventPublisher,
 	}
 }
 
 // CreateOrder creates a new order with the given details
-func (uc *OrderUseCase) CreateOrder(ctx context.Context, customerID string, items []domain.OrderItem) (*domain.Order, error) {
+func (uc *OrderUseCase) CreateOrder(
+	ctx context.Context,
+	customerID string,
+	items []domain.OrderItem,
+) (*domain.Order, error) {
+	// Validate input
 	if customerID == "" {
 		return nil, domain.ErrInvalidCustomerID
 	}
@@ -37,23 +44,70 @@ func (uc *OrderUseCase) CreateOrder(ctx context.Context, customerID string, item
 		return nil, domain.ErrEmptyOrderItems
 	}
 
+	// Create order
 	order := domain.NewOrder(customerID, items)
+	order.SagaID = uuid.New()
 
-	err := uc.orderRepo.Create(ctx, order)
-	if err != nil {
-		return nil, err
+	// Calculate total price for the event
+	totalPrice := order.CalculateTotalPrice()
+
+	// Prepare order created event for outbox
+	orderCreatedEvent := event.OrderCreatedEvent{
+		EventID:    uuid.New(),
+		SageID:     order.SagaID,
+		OrderID:    order.ID,
+		CustomerID: order.CustomerID,
+		Items:      order.Items,
+		TotalPrice: totalPrice,
+		CreatedAt:  time.Now(),
 	}
 
-	// Start the saga by publish OrderCreated event
-	err = uc.publishOrderCreatedEvent(ctx, order)
+	// Marshal event payload
+	eventPayload, err := json.Marshal(orderCreatedEvent)
 	if err != nil {
-		// Failed to publish event - compensate by marking order as failed
-		order.Status = domain.OrderStatusFailed
-		uc.orderRepo.Update(ctx, order)
+		return nil, fmt.Errorf("failed to marshal order created event: %w", err)
+	}
+
+	// Execute operations within a single unit of work
+	err = uc.uow.Execute(ctx, func() error {
+		// Get repositories from the unit of work
+		orderRepo := uc.uow.Orders()
+		outboxRepo := uc.uow.OutboxMessages()
+
+		// Create order
+		if err := orderRepo.Create(ctx, order); err != nil {
+			return fmt.Errorf("failed to create order: %w", err)
+		}
+
+		// Create outbox message
+		if err := outboxRepo.CreateMessage(
+			ctx,
+			order.ID.String(),
+			"order.created",
+			eventPayload,
+		); err != nil {
+			return fmt.Errorf("failed to create outbox message: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
 		return nil, err
 	}
 
 	return order, nil
+
+	// Start the saga by publish OrderCreated event
+	// err = uc.publishOrderCreatedEvent(ctx, order)
+	// if err != nil {
+	// 	// Failed to publish event - compensate by marking order as failed
+	// 	order.Status = domain.OrderStatusFailed
+	// 	uc.orderRepo.Update(ctx, order)
+	// 	return nil, err
+	// }
+
+	
 }
 
 // publishOrderCreatedEvent publishes an event to notify other services

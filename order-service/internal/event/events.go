@@ -8,10 +8,11 @@ import (
 )
 
 type OrderCreatedEvent struct {
-	EventID    uuid.UUID
-	SageID     uuid.UUID
-	OrderID    uuid.UUID
-	CustomerID string
-	Items      []domain.OrderItem
-	CreatedAt  time.Time
+	EventID    uuid.UUID          `json:"event_id"`
+	SageID     uuid.UUID          `json:"sage_id"`
+	OrderID    uuid.UUID          `json:"order_id"`
+	CustomerID string             `json:"customer_id"`
+	Items      []domain.OrderItem `json:"items"`
+	TotalPrice float64            `json:"total_price"`
+	CreatedAt  time.Time          `json:"created_at"`
 }

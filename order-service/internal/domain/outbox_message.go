@@ -17,12 +17,9 @@ const (
 // OutputMessage represents a message in the outbox queue
 type OutboxMessage struct {
 	ID          uuid.UUID
-	EventType   string
-	Payload     interface{}
+	AggregateID string
+	Type        string
+	Payload     []byte
 	Status      OutboxStatus
 	CreatedAt   time.Time
-	ProcessedAt time.Time
-	FailReason  string `json:"failReason,omitempty"`
-	RetryCount  int    `json:"retryCount"`
-	MaxRetries  int    `json:"maxRetries"`
 }
