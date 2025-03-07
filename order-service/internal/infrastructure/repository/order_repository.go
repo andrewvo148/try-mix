@@ -15,35 +15,25 @@ import (
 
 // OrderRepository implements the OrderRepository interface using SQLC and PostgresSQL
 type OrderRepository struct {
-	db      *sql.DB
 	queries *sqlc.Queries
 }
 
 // NewOrderRepository creates a new order repository
-func NewOrderRepository(db *sql.DB) ports.OrderRepository {
+func NewOrderRepository(tx *sql.Tx) ports.OrderRepository {
 	return &OrderRepository{
-		db:      db,
-		queries: sqlc.New(db),
+		queries: sqlc.New(tx),
 	}
 }
 
 // Create persists a new order to the database
 func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error {
-	// Start a transaction
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	qtx := r.queries.WithTx(tx)
 
 	// Insert order
-	err = qtx.CreateOrder(ctx, sqlc.CreateOrderParams{
+	err := r.queries.CreateOrder(ctx, sqlc.CreateOrderParams{
 		ID:         order.ID,
 		CustomerID: order.CustomerID,
 		Status:     string(order.Status),
-		TotalPrice: fmt.Sprintf("%.2f",order.TotalPrice),
+		TotalPrice: fmt.Sprintf("%.2f", order.TotalPrice),
 		CreatedAt:  order.CreatedAt,
 		UpdatedAt:  order.UpdatedAt,
 	})
@@ -52,15 +42,14 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error
 		return err
 	}
 
-
 	// Insert order items
 	for _, item := range order.Items {
-		err = qtx.CreateOrderItem(ctx, sqlc.CreateOrderItemParams{
-			ID: item.ID,
-			OrderID: order.ID,
+		err = r.queries.CreateOrderItem(ctx, sqlc.CreateOrderItemParams{
+			ID:        item.ID,
+			OrderID:   order.ID,
 			ProductID: item.ProductID,
-			Quantity: item.Quantity,
-			Price: fmt.Sprintf("%.2f", item.Price),
+			Quantity:  item.Quantity,
+			Price:     fmt.Sprintf("%.2f", item.Price),
 		})
 
 		if err != nil {
@@ -68,12 +57,12 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // GetByID retrieves an order by its ID
 func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
-	
+
 	// Validate UUID
 	uuid, err := uuid.Parse(id)
 	if err != nil {
@@ -89,7 +78,6 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		return nil, err
 	}
 
-
 	// Get order items
 	items, err := r.queries.GetOrderItems(ctx, uuid)
 	if err != nil {
@@ -102,14 +90,14 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 		return nil, err
 	}
 
-	order := &domain.Order {
-		ID: orderRow.ID,
+	order := &domain.Order{
+		ID:         orderRow.ID,
 		CustomerID: orderRow.CustomerID,
-		Status: domain.OrderStatus(orderRow.Status),
+		Status:     domain.OrderStatus(orderRow.Status),
 		TotalPrice: totalPriceFloat,
-		CreatedAt: orderRow.CreatedAt,
-		UpdatedAt: orderRow.UpdatedAt,
-		Items: make([]domain.OrderItem, 0, len(items)),
+		CreatedAt:  orderRow.CreatedAt,
+		UpdatedAt:  orderRow.UpdatedAt,
+		Items:      make([]domain.OrderItem, 0, len(items)),
 	}
 
 	for _, item := range items {
@@ -118,10 +106,10 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 			return nil, err
 		}
 		order.Items = append(order.Items, domain.OrderItem{
-			ID: item.ID,
+			ID:        item.ID,
 			ProductID: item.ProductID,
-			Quantity: item.Quantity,
-			Price: totalPriceFloat,
+			Quantity:  item.Quantity,
+			Price:     totalPriceFloat,
 		})
 	}
 
@@ -131,23 +119,13 @@ func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order
 // Update updates an existing order
 func (r *OrderRepository) Update(ctx context.Context, order *domain.Order) error {
 	// Start a transaction
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-
-	defer tx.Rollback()
-
-
-	qtx := r.queries.WithTx(tx)
-
 
 	// Update order
-	err = qtx.UpdateOrder(ctx, sqlc.UpdateOrderParams{
-		Status: string(order.Status),
+	err := r.queries.UpdateOrder(ctx, sqlc.UpdateOrderParams{
+		Status:     string(order.Status),
 		TotalPrice: fmt.Sprintf("%.2f", order.TotalPrice),
-		UpdatedAt: order.UpdatedAt,
-		ID: order.ID,
+		UpdatedAt:  order.UpdatedAt,
+		ID:         order.ID,
 	})
 
 	if err != nil {
@@ -158,27 +136,26 @@ func (r *OrderRepository) Update(ctx context.Context, order *domain.Order) error
 	}
 
 	// Delete existing items
-	err = qtx.DeleteOrderItems(ctx, order.ID)
+	err = r.queries.DeleteOrderItems(ctx, order.ID)
 	if err != nil {
 		return err
 	}
 
-
 	// Insert updated items
 	for _, item := range order.Items {
-		err = qtx.CreateOrderItem(ctx, sqlc.CreateOrderItemParams{
-			ID: item.ID,
-			OrderID: order.ID,
+		err = r.queries.CreateOrderItem(ctx, sqlc.CreateOrderItemParams{
+			ID:        item.ID,
+			OrderID:   order.ID,
 			ProductID: item.ProductID,
-			Quantity: item.Quantity,
-			Price: fmt.Sprintf("%.2f", item.Price),
+			Quantity:  item.Quantity,
+			Price:     fmt.Sprintf("%.2f", item.Price),
 		})
 		if err != nil {
 			return err
 		}
 	}
 
-	return tx.Commit()
+	return nil
 }
 
 // Delete removes an order
@@ -204,7 +181,7 @@ func (r *OrderRepository) Delete(ctx context.Context, id string) error {
 func (r *OrderRepository) List(ctx context.Context, limit, offfset int) ([]*domain.Order, error) {
 	// Get orders
 	orderRows, err := r.queries.ListOrders(ctx, sqlc.ListOrdersParams{
-		Limit: int32(limit),
+		Limit:  int32(limit),
 		Offset: int32(offfset),
 	})
 
@@ -220,14 +197,14 @@ func (r *OrderRepository) List(ctx context.Context, limit, offfset int) ([]*doma
 			return nil, err
 		}
 
-		order := &domain.Order {
-			ID: row.ID,
+		order := &domain.Order{
+			ID:         row.ID,
 			CustomerID: row.CustomerID,
-			Status: domain.OrderStatus(row.Status),
+			Status:     domain.OrderStatus(row.Status),
 			TotalPrice: totalPrice,
-			CreatedAt: row.CreatedAt,
-			UpdatedAt: row.UpdatedAt,
-			Items: []domain.OrderItem{},
+			CreatedAt:  row.CreatedAt,
+			UpdatedAt:  row.UpdatedAt,
+			Items:      []domain.OrderItem{},
 		}
 
 		// Get items of this order
@@ -242,10 +219,10 @@ func (r *OrderRepository) List(ctx context.Context, limit, offfset int) ([]*doma
 				return nil, err
 			}
 			order.Items = append(order.Items, domain.OrderItem{
-				ID: item.ID,
+				ID:        item.ID,
 				ProductID: item.ProductID,
-				Quantity: item.Quantity,
-				Price: price,
+				Quantity:  item.Quantity,
+				Price:     price,
 			})
 		}
 		orders = append(orders, order)

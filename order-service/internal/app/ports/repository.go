@@ -7,9 +7,8 @@ import (
 
 // UnitOfWork defines the interface for managing transactions
 type UnitOfWork interface {
-	// Begin starts a new transaction and returns a transaction context
 	// This method should be called before accessing any  repositories
-	Begin(ctx context.Context) (context.Context, error)
+	Begin(ctx context.Context) error
 
 	// Commit commits the current transaction
 	// Returns an error if commit fails or if no transaction is active

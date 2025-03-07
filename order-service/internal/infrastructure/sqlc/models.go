@@ -5,6 +5,8 @@
 package sqlc
 
 import (
+	"database/sql"
+	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -25,4 +27,16 @@ type OrderItem struct {
 	ProductID string    `json:"product_id"`
 	Quantity  int32     `json:"quantity"`
 	Price     string    `json:"price"`
+}
+
+type OutboxMessage struct {
+	ID           uuid.UUID       `json:"id"`
+	AggregateID  string          `json:"aggregate_id"`
+	EventType    string          `json:"event_type"`
+	Payload      json.RawMessage `json:"payload"`
+	CreatedAt    time.Time       `json:"created_at"`
+	ProcessedAt  sql.NullTime    `json:"processed_at"`
+	AttemptCount int32           `json:"attempt_count"`
+	Status       string          `json:"status"`
+	ErrorMessage sql.NullString  `json:"error_message"`
 }

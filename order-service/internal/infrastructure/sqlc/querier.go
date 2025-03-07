@@ -14,12 +14,18 @@ type Querier interface {
 	// db/queries.sql
 	CreateOrder(ctx context.Context, arg CreateOrderParams) error
 	CreateOrderItem(ctx context.Context, arg CreateOrderItemParams) error
+	CreateOutboxMessage(ctx context.Context, arg CreateOutboxMessageParams) error
 	DeleteOrder(ctx context.Context, id uuid.UUID) error
 	DeleteOrderItem(ctx context.Context, arg DeleteOrderItemParams) error
 	DeleteOrderItems(ctx context.Context, orderID uuid.UUID) error
+	DeleteOutboxMessage(ctx context.Context, id uuid.UUID) error
 	GetOrder(ctx context.Context, id uuid.UUID) (Order, error)
 	GetOrderItems(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
+	GetOutboxMessageByID(ctx context.Context, id uuid.UUID) (OutboxMessage, error)
+	GetPendingOutboxMessages(ctx context.Context, limit int32) ([]OutboxMessage, error)
 	ListOrders(ctx context.Context, arg ListOrdersParams) ([]Order, error)
+	MarkOutboxMessageFailed(ctx context.Context, arg MarkOutboxMessageFailedParams) error
+	MarkOutboxMessageProcessed(ctx context.Context, arg MarkOutboxMessageProcessedParams) error
 	UpdateOrder(ctx context.Context, arg UpdateOrderParams) error
 }
 

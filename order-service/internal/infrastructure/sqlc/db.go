@@ -30,6 +30,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.createOrderItemStmt, err = db.PrepareContext(ctx, createOrderItem); err != nil {
 		return nil, fmt.Errorf("error preparing query CreateOrderItem: %w", err)
 	}
+	if q.createOutboxMessageStmt, err = db.PrepareContext(ctx, createOutboxMessage); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateOutboxMessage: %w", err)
+	}
 	if q.deleteOrderStmt, err = db.PrepareContext(ctx, deleteOrder); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteOrder: %w", err)
 	}
@@ -39,14 +42,29 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.deleteOrderItemsStmt, err = db.PrepareContext(ctx, deleteOrderItems); err != nil {
 		return nil, fmt.Errorf("error preparing query DeleteOrderItems: %w", err)
 	}
+	if q.deleteOutboxMessageStmt, err = db.PrepareContext(ctx, deleteOutboxMessage); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteOutboxMessage: %w", err)
+	}
 	if q.getOrderStmt, err = db.PrepareContext(ctx, getOrder); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrder: %w", err)
 	}
 	if q.getOrderItemsStmt, err = db.PrepareContext(ctx, getOrderItems); err != nil {
 		return nil, fmt.Errorf("error preparing query GetOrderItems: %w", err)
 	}
+	if q.getOutboxMessageByIDStmt, err = db.PrepareContext(ctx, getOutboxMessageByID); err != nil {
+		return nil, fmt.Errorf("error preparing query GetOutboxMessageByID: %w", err)
+	}
+	if q.getPendingOutboxMessagesStmt, err = db.PrepareContext(ctx, getPendingOutboxMessages); err != nil {
+		return nil, fmt.Errorf("error preparing query GetPendingOutboxMessages: %w", err)
+	}
 	if q.listOrdersStmt, err = db.PrepareContext(ctx, listOrders); err != nil {
 		return nil, fmt.Errorf("error preparing query ListOrders: %w", err)
+	}
+	if q.markOutboxMessageFailedStmt, err = db.PrepareContext(ctx, markOutboxMessageFailed); err != nil {
+		return nil, fmt.Errorf("error preparing query MarkOutboxMessageFailed: %w", err)
+	}
+	if q.markOutboxMessageProcessedStmt, err = db.PrepareContext(ctx, markOutboxMessageProcessed); err != nil {
+		return nil, fmt.Errorf("error preparing query MarkOutboxMessageProcessed: %w", err)
 	}
 	if q.updateOrderStmt, err = db.PrepareContext(ctx, updateOrder); err != nil {
 		return nil, fmt.Errorf("error preparing query UpdateOrder: %w", err)
@@ -66,6 +84,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing createOrderItemStmt: %w", cerr)
 		}
 	}
+	if q.createOutboxMessageStmt != nil {
+		if cerr := q.createOutboxMessageStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createOutboxMessageStmt: %w", cerr)
+		}
+	}
 	if q.deleteOrderStmt != nil {
 		if cerr := q.deleteOrderStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing deleteOrderStmt: %w", cerr)
@@ -81,6 +104,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing deleteOrderItemsStmt: %w", cerr)
 		}
 	}
+	if q.deleteOutboxMessageStmt != nil {
+		if cerr := q.deleteOutboxMessageStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteOutboxMessageStmt: %w", cerr)
+		}
+	}
 	if q.getOrderStmt != nil {
 		if cerr := q.getOrderStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing getOrderStmt: %w", cerr)
@@ -91,9 +119,29 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getOrderItemsStmt: %w", cerr)
 		}
 	}
+	if q.getOutboxMessageByIDStmt != nil {
+		if cerr := q.getOutboxMessageByIDStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getOutboxMessageByIDStmt: %w", cerr)
+		}
+	}
+	if q.getPendingOutboxMessagesStmt != nil {
+		if cerr := q.getPendingOutboxMessagesStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getPendingOutboxMessagesStmt: %w", cerr)
+		}
+	}
 	if q.listOrdersStmt != nil {
 		if cerr := q.listOrdersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listOrdersStmt: %w", cerr)
+		}
+	}
+	if q.markOutboxMessageFailedStmt != nil {
+		if cerr := q.markOutboxMessageFailedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing markOutboxMessageFailedStmt: %w", cerr)
+		}
+	}
+	if q.markOutboxMessageProcessedStmt != nil {
+		if cerr := q.markOutboxMessageProcessedStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing markOutboxMessageProcessedStmt: %w", cerr)
 		}
 	}
 	if q.updateOrderStmt != nil {
@@ -138,31 +186,43 @@ func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, ar
 }
 
 type Queries struct {
-	db                   DBTX
-	tx                   *sql.Tx
-	createOrderStmt      *sql.Stmt
-	createOrderItemStmt  *sql.Stmt
-	deleteOrderStmt      *sql.Stmt
-	deleteOrderItemStmt  *sql.Stmt
-	deleteOrderItemsStmt *sql.Stmt
-	getOrderStmt         *sql.Stmt
-	getOrderItemsStmt    *sql.Stmt
-	listOrdersStmt       *sql.Stmt
-	updateOrderStmt      *sql.Stmt
+	db                             DBTX
+	tx                             *sql.Tx
+	createOrderStmt                *sql.Stmt
+	createOrderItemStmt            *sql.Stmt
+	createOutboxMessageStmt        *sql.Stmt
+	deleteOrderStmt                *sql.Stmt
+	deleteOrderItemStmt            *sql.Stmt
+	deleteOrderItemsStmt           *sql.Stmt
+	deleteOutboxMessageStmt        *sql.Stmt
+	getOrderStmt                   *sql.Stmt
+	getOrderItemsStmt              *sql.Stmt
+	getOutboxMessageByIDStmt       *sql.Stmt
+	getPendingOutboxMessagesStmt   *sql.Stmt
+	listOrdersStmt                 *sql.Stmt
+	markOutboxMessageFailedStmt    *sql.Stmt
+	markOutboxMessageProcessedStmt *sql.Stmt
+	updateOrderStmt                *sql.Stmt
 }
 
 func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db:                   tx,
-		tx:                   tx,
-		createOrderStmt:      q.createOrderStmt,
-		createOrderItemStmt:  q.createOrderItemStmt,
-		deleteOrderStmt:      q.deleteOrderStmt,
-		deleteOrderItemStmt:  q.deleteOrderItemStmt,
-		deleteOrderItemsStmt: q.deleteOrderItemsStmt,
-		getOrderStmt:         q.getOrderStmt,
-		getOrderItemsStmt:    q.getOrderItemsStmt,
-		listOrdersStmt:       q.listOrdersStmt,
-		updateOrderStmt:      q.updateOrderStmt,
+		db:                             tx,
+		tx:                             tx,
+		createOrderStmt:                q.createOrderStmt,
+		createOrderItemStmt:            q.createOrderItemStmt,
+		createOutboxMessageStmt:        q.createOutboxMessageStmt,
+		deleteOrderStmt:                q.deleteOrderStmt,
+		deleteOrderItemStmt:            q.deleteOrderItemStmt,
+		deleteOrderItemsStmt:           q.deleteOrderItemsStmt,
+		deleteOutboxMessageStmt:        q.deleteOutboxMessageStmt,
+		getOrderStmt:                   q.getOrderStmt,
+		getOrderItemsStmt:              q.getOrderItemsStmt,
+		getOutboxMessageByIDStmt:       q.getOutboxMessageByIDStmt,
+		getPendingOutboxMessagesStmt:   q.getPendingOutboxMessagesStmt,
+		listOrdersStmt:                 q.listOrdersStmt,
+		markOutboxMessageFailedStmt:    q.markOutboxMessageFailedStmt,
+		markOutboxMessageProcessedStmt: q.markOutboxMessageProcessedStmt,
+		updateOrderStmt:                q.updateOrderStmt,
 	}
 }

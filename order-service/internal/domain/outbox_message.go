@@ -22,4 +22,5 @@ type OutboxMessage struct {
 	Payload     []byte
 	Status      OutboxStatus
 	CreatedAt   time.Time
+	ProcessedAt time.Time
 }
