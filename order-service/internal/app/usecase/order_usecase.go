@@ -15,8 +15,8 @@ import (
 
 // OrderUsecase implements the order business logic
 type OrderUseCase struct {
-	uow            ports.UnitOfWork
 	eventPublisher ports.EventPublisher
+	uow            ports.UnitOfWork
 }
 
 // NewOrderUseCase creates a new order use case
@@ -30,6 +30,7 @@ func NewOrderUseCase(
 	}
 }
 
+// CreateOrder creates a new order with the given details
 func (uc *OrderUseCase) CreateOrder(
 	ctx context.Context,
 	customerID string,
@@ -45,18 +46,17 @@ func (uc *OrderUseCase) CreateOrder(
 
 	// Create order entity
 	order := domain.NewOrder(customerID, items)
+	order.Status = domain.OrderStatusPending
 	order.SagaID = uuid.New()
-
-	// Calculate total value for the event
 
 	// Prepare order created event
 	orderCreatedEvent := event.OrderCreatedEvent{
 		EventID:    uuid.New(),
-		SagaID:     order.SagaID,
+		SageID:     order.SagaID,
 		OrderID:    order.ID,
 		CustomerID: order.CustomerID,
 		Items:      order.Items,
-		TotalPrice: order.CalculateTotalPrice(),
+		TotalPrice: order.TotalPrice,
 		CreatedAt:  time.Now(),
 	}
 
@@ -77,19 +77,18 @@ func (uc *OrderUseCase) CreateOrder(
 		if err != nil {
 			// Rollback on error
 			if rbErr := uc.uow.Rollback(txCtx); rbErr != nil {
-				// Log rollback error but don't override original error
 				log.Printf("rollback error: %v", rbErr)
 			}
 		}
 	}()
 
 	// Create order
-	if err = uc.uow.Orders(txCtx).Create(txCtx, order); err != nil {
+	if err = uc.uow.Orders().Create(txCtx, order); err != nil {
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
 
 	// Create outbox message
-	if err = uc.uow.OutboxMessages(txCtx).CreateMessage(
+	if err = uc.uow.OutboxMessages().CreateMessage(
 		txCtx,
 		order.ID.String(),
 		"order.created",
@@ -98,7 +97,6 @@ func (uc *OrderUseCase) CreateOrder(
 		return nil, fmt.Errorf("failed to create outbox message: %w", err)
 	}
 
-	// Commit transaction
 	if err = uc.uow.Commit(txCtx); err != nil {
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
@@ -120,7 +118,7 @@ func (uc *OrderUseCase) CreateOrder(
 // 	return uc.eventPublisher.Publish(ctx, "order.created", event)
 // }
 
-// // GetOrder retrieves an order by its ID
+// GetOrder retrieves an order by its ID
 // func (uc *OrderUseCase) GetOrder(ctx context.Context, id string) (*domain.Order, error) {
 // 	if id == "" {
 // 		return nil, domain.ErrInvalidOrderID
