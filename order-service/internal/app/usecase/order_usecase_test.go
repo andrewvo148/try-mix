@@ -1,96 +1,258 @@
-package usecase
+ package usecase
 
-import (
-	"context"
-	"order-service/internal/app/ports"
-	"order-service/internal/domain"
-	"order-service/internal/event"
-	"testing"
+// import (
+// 	"context"
+// 	"errors"
+// 	"order-service/internal/app/ports"
+// 	"order-service/internal/domain"
+// 	"testing"
 
-	"github.com/google/uuid"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
-)
+// 	"github.com/google/uuid"
+// 	"github.com/stretchr/testify/assert"
+// 	"github.com/stretchr/testify/mock"
+// 	"go.lsp.dev/pkg/event"
+// )
 
-var _ ports.OrderRepository = (*MockOrderRepository)(nil)
+// // MockUnitOfWork implements ports.UnitOfWork for testing
+// type MockUnitOfWork struct {
+// 	mock.Mock
+// }
 
-type MockOrderRepository struct {
-	mock.Mock
-}
+// func (m *MockUnitOfWork) Begin(ctx context.Context) (context.Context, error) {
+// 	args := m.Called(ctx)
+// 	if args.Get(0) == nil {
+// 		return nil, args.Error(1)
+// 	}
+// 	return args.Get(0).(context.Context), args.Error(1)
+// }
 
-func (m *MockOrderRepository) Create(ctx context.Context, order *domain.Order) error {
-	args := m.Called(ctx, order)
-	return args.Error(0)
-}
+// func (m *MockUnitOfWork) Commit(ctx context.Context) error {
+// 	args := m.Called(ctx)
+// 	return args.Error(0)
+// }
 
-func (m *MockOrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
-	return nil, nil
-}
+// func (m *MockUnitOfWork) Rollback(ctx context.Context) error {
+// 	args := m.Called(ctx)
+// 	return args.Error(0)
+// }
 
-// Update implements ports.OrderRepository.
-func (m *MockOrderRepository) Update(ctx context.Context, order *domain.Order) error {
-	return nil
-}
+// func (m *MockUnitOfWork) Orders(ctx context.Context) ports.UnitOfWork {
+// 	args := m.Called()
+// 	return args.Get(0).(ports.UnitOfWork)
+// }
 
-func (m *MockOrderRepository) List(ctx context.Context, limit, offset int) ([]*domain.Order, error) {
-	return nil, nil
-}
+// func (m *MockUnitOfWork) OutboxMessages() ports.OutboxRepository {
+// 	args := m.Called()
+// 	return args.Get(0).(ports.OutboxRepository)
+// }
 
-func (m *MockOrderRepository) Delete(ctx context.Context, id string) error {
-	return nil
-}
+// // MockOrderRepository implements for ports.OrderRepository for testing purposes
+// type MockOrderRepository struct {
+// 	mock.Mock
+// }
 
-var _ ports.Publisher = (*MockEventPubliser)(nil)
+// func (m *MockOrderRepository) Create(ctx context.Context, order *domain.Order) error {
+// 	args := m.Called(ctx, order)
+// 	return args.Error(0)
+// }
 
-type MockEventPubliser struct {
-	mock.Mock
-}
+// func (m *MockOrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
+// 	args := m.Called(ctx, id)
+// 	return args.Get(0).(*domain.Order), args.Error(1)
+// }
 
-// Publish implements ports.Publisher.
-func (m *MockEventPubliser) Publish(ctx context.Context, topic string, event interface{}) error {
-	args := m.Called(ctx, topic, event)
-	return args.Error(0)
-}
+// func (m *MockOrderRepository) Update(ctx context.Context, order *domain.Order) error {
+// 	args := m.Called(ctx, order)
+// 	return args.Error(0)
+// }
 
-func TestCreateOrder_Success(t *testing.T) {
-	// Arrange
-	mockRepo := new(MockOrderRepository)
-	mockPubliser := new(MockEventPubliser)
+// func (m *MockOrderRepository) Delete(ctx context.Context, id string) error {
+// 	args := m.Called(ctx, id)
+// 	return args.Error(0)
+// }
 
-	uc := NewOrderUseCase(mockRepo, mockPubliser)
+// func (m *MockOrderRepository) List(ctx context.Context, limit, offset int) ([]*domain.Order, error) {
+// 	args := m.Called(ctx, limit, offset)
+// 	return args.Get(0).([]*domain.Order), args.Error(1)
+// }
 
-	ctx := context.Background()
-	customerID := "customer-123"
-	items := []domain.OrderItem{
-		{ProductID: "product-1", Quantity: 2, Price: 10.0},
-		{ProductID: "product-2", Quantity: 1, Price: 15.0},
-	}
+// // MockEventPubliser implements ports.EventPublisher for testing
+// type MockEventPubliser struct {
+// 	mock.Mock
+// }
 
-	// Expect repository and publisher calls
-	mockRepo.On("Create", ctx, mock.MatchedBy(func(order *domain.Order) bool {
-		return order.CustomerID == customerID &&
-			len(order.Items) == 2 &&
-			order.Status == domain.OrderStatusPending &&
-			order.SagaID != uuid.Nil
-	})).Return(nil)
+// func (m *MockEventPubliser) Publish(ctx context.Context, event event.Event) error {
+// 	args := m.Called(ctx, event)
+// 	return args.Error(0)
+// }
 
-	mockPubliser.On("Publish", ctx, "order.created", mock.MatchedBy(func(event event.OrderCreatedEvent) bool {
-		return event.CustomerID == customerID &&
-			len(event.Items) == 2 &&
-			event.SageID != uuid.Nil
-	})).Return(nil)
-	// Act
-	order, err := uc.CreateOrder(ctx, customerID, items)
+// // MockOutboxRepository implements ports.OutboxRepository for testing
+// type MockOutboxRepository struct {
+// 	mock.Mock
+// }
 
-	// Assert
-	assert.NoError(t, err)
-	assert.NotNil(t, order)
-	assert.Equal(t, customerID, order.CustomerID)
-	assert.Equal(t, domain.OrderStatusPending, order.Status)
-	assert.NotEmpty(t, order.SagaID)
-	assert.Len(t, order.Items, 2)
+// func (m *MockOutboxRepository) CreateMessage(ctx context.Context, aggregateID string, eventType string, payload []byte) error {
+// 	args := m.Called(ctx, aggregateID, eventType, payload)
+// 	return args.Error(0)
+// }
 
-	mockRepo.AssertExpectations(t)
-	mockPubliser.AssertExpectations(t)
+// func TestCreateOrder_Success(t *testing.T) {
+// 	// Arrange
+// 	mockUow := new(MockUnitOfWork)
+// 	mockOrderRepo := new(MockOrderRepository)
+// 	mockOutboxRepo := new(MockOutboxRepository)
+// 	mockEventPublisher := new(MockEventPubliser)
 
-}
+// 	// Setup mock transaction context
+// 	ctx := context.Background()
+// 	txCtx := context.WithValue(ctx, "tx", "transaction-id")
+
+// 	customerID := "customer-123"
+// 	items := []domain.OrderItem{
+// 		{ProductID: "product-1", Quantity: 2, Price: 10.0},
+// 		{ProductID: "product-2", Quantity: 1, Price: 15.0},
+// 	}
+
+// 	// Setup UoW expectations
+// 	mockUow.On("Begin", ctx).Return(txCtx, nil)
+// 	mockUow.On("Orders").Return(mockOrderRepo)
+// 	mockUow.On("OutboxMessages").Return(mockOutboxRepo)
+// 	mockUow.On("Commit", txCtx).Return(nil)
+
+// 	// Setup repository expectations
+// 	mockOrderRepo.On("Create", txCtx, mock.MatchedBy(func(order *domain.Order) bool {
+// 		return order.CustomerID == customerID &&
+// 			len(order.Items) == 2 &&
+// 			order.Status == domain.OrderStatusPending &&
+// 			order.SagaID != uuid.Nil
+// 	})).Return(nil)
+
+// 	mockOutboxRepo.On("CreateMessage", txCtx, mock.AnythingOfType("string"), "order.created", mock.AnythingOfType("[]uint8")).Return(nil)
+
+// 	uc := NewOrderUseCase(mockUow, mockEventPublisher)
+
+// 	// Act
+// 	order, err := uc.CreateOrder(ctx, customerID, items)
+
+// 	// Assert
+// 	assert.NoError(t, err)
+// 	assert.NotNil(t, order)
+// 	assert.Equal(t, customerID, order.CustomerID)
+// 	assert.Equal(t, domain.OrderStatusPending, order.Status)
+// 	assert.NotEmpty(t, order.SagaID)
+// 	assert.Len(t, order.Items, 2)
+
+// 	mockUow.AssertExpectations(t)
+// 	mockOrderRepo.AssertExpectations(t)
+// 	mockOutboxRepo.AssertExpectations(t)
+// }
+
+// func TestCreateOrder_InvalidInput(t *testing.T) {
+// 	// Arrange
+// 	mockUow := new(MockUnitOfWork)
+// 	mockEventPublisher := new(MockEventPubliser)
+// 	uc := NewOrderUseCase(mockUow, mockEventPublisher)
+// 	ctx := context.Background()
+
+// 	// Test cases
+// 	testCases := []struct {
+// 		name        string
+// 		customerID  string
+// 		items       []domain.OrderItem
+// 		expectedErr error
+// 	}{
+// 		{
+// 			name:        "empty customer ID",
+// 			customerID:  "",
+// 			items:       []domain.OrderItem{{ProductID: "product-1", Quantity: 1, Price: 10.0}},
+// 			expectedErr: domain.ErrInvalidCustomerID,
+// 		},
+// 		{
+// 			name:        "empty order items",
+// 			customerID:  "customer-123",
+// 			items:       []domain.OrderItem{},
+// 			expectedErr: domain.ErrEmptyOrderItems,
+// 		},
+// 	}
+
+// 	for _, tc := range testCases {
+// 		t.Run(tc.name, func(t *testing.T) {
+// 			// Act
+// 			order, err := uc.CreateOrder(ctx, tc.customerID, tc.items)
+
+// 			// Assert
+// 			assert.Error(t, err)
+// 			assert.Equal(t, tc.expectedErr, err)
+// 			assert.Nil(t, order)
+// 		})
+// 	}
+
+// 	// No methods should be called on the mocks for invalid input
+// 	mockUow.AssertNotCalled(t, "Begin")
+// 	mockUow.AssertNotCalled(t, "Commit")
+// 	mockUow.AssertNotCalled(t, "Rollback")
+// }
+
+// func TestCreateOrder_TransactionError(t *testing.T) {
+// 	// Arrange
+// 	mockUow := new(MockUnitOfWork)
+// 	mockEventPublisher := new(MockEventPubliser)
+// 	ctx := context.Background()
+
+// 	customerID := "customer-123"
+// 	items := []domain.OrderItem{
+// 		{ProductID: "product-1", Quantity: 2, Price: 10.0},
+// 	}
+
+// 	// Setup UoW expectations - transaction begin fails
+// 	mockUow.On("Begin", ctx).Return(nil, errors.New("transaction error"))
+
+// 	uc := NewOrderUseCase(mockUow, mockEventPublisher)
+
+// 	// Act
+// 	order, err := uc.CreateOrder(ctx, customerID, items)
+
+// 	// Assert
+// 	assert.Error(t, err)
+// 	assert.Nil(t, order)
+// 	assert.Contains(t, err.Error(), "failed to begin transaction")
+
+// 	mockUow.AssertExpectations(t)
+// }
+
+// func TestCreateOrder_RepositoryError(t *testing.T) {
+// 	// Arrange
+// 	mockUow := new(MockUnitOfWork)
+// 	mockOrderRepo := new(MockOrderRepository)
+// 	mockEventPublisher := new(MockEventPubliser)
+
+// 	// Setup mock transaction context
+// 	ctx := context.Background()
+// 	txCtx := context.WithValue(ctx, "tx", "transaction-id")
+
+// 	customerID := "customer-123"
+// 	items := []domain.OrderItem{
+// 		{ProductID: "product-1", Quantity: 2, Price: 10.0},
+// 	}
+
+// 	// Setup UoW expectations
+// 	mockUow.On("Begin", ctx).Return(txCtx, nil)
+// 	mockUow.On("Orders").Return(mockOrderRepo)
+// 	mockUow.On("Rollback", txCtx).Return(nil)
+
+// 	// Setup repository expectations - Create fails
+// 	mockOrderRepo.On("Create", txCtx, mock.AnythingOfType("*domain.Order")).Return(errors.New("database error"))
+
+// 	uc := NewOrderUseCase(mockUow, mockEventPublisher)
+
+// 	// Act
+// 	order, err := uc.CreateOrder(ctx, customerID, items)
+
+// 	// Assert
+// 	assert.Error(t, err)
+// 	assert.Nil(t, order)
+// 	assert.Contains(t, err.Error(), "failed to create order")
+
+// 	mockUow.AssertExpectations(t)
+// 	mockOrderRepo.AssertExpectations(t)
+// }

@@ -9,7 +9,7 @@ import (
 
 type OrderCreatedEvent struct {
 	EventID    uuid.UUID          `json:"event_id"`
-	SageID     uuid.UUID          `json:"sage_id"`
+	SagaID     uuid.UUID          `json:"saga_id"`
 	OrderID    uuid.UUID          `json:"order_id"`
 	CustomerID string             `json:"customer_id"`
 	Items      []domain.OrderItem `json:"items"`

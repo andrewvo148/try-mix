@@ -5,18 +5,29 @@ import (
 	"order-service/internal/domain"
 )
 
-// UnitOfWork defines the interfaces for managing transactions
+// UnitOfWork defines the interface for managing transactions
 type UnitOfWork interface {
-	// Execute runs the given function within a tracsaction
-	Execute(ctx context.Context, fn func() error) error
-
-	// Orders returns the order repository for the current transaction
-	Orders() OrderRepository
-
-	// OutboxMessages returns the outbox repository for the current transaction
-	OutboxMessages() OutboxRepository
-
+    // Begin starts a new transaction and returns a transaction context
+    // This method should be called before accessing any repositories
+    Begin(ctx context.Context) (context.Context, error)
+    
+    // Commit commits the current transaction
+    // Returns an error if commit fails or if no transaction is active
+    Commit(ctx context.Context) error
+    
+    // Rollback aborts the current transaction
+    // Returns an error if rollback fails or if no transaction is active
+    Rollback(ctx context.Context) error
+    
+    // Orders returns the order repository for the current transaction
+    // The repository will use the active transaction from the context
+    Orders(ctx context.Context) OrderRepository
+    
+    // OutboxMessages returns the outbox repository for the current transaction
+    // The repository will use the active transaction from the context
+    OutboxMessages(ctx context.Context) OutboxRepository
 }
+
 // OrderRepository defines the interface for order data access
 type OrderRepository interface {
 	Create(ctx context.Context, order *domain.Order) error
