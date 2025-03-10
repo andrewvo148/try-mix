@@ -31,9 +31,10 @@ type OrderItem struct {
 
 type OutboxMessage struct {
 	ID           uuid.UUID       `json:"id"`
-	AggregateID  string          `json:"aggregate_id"`
+	AggregateID  uuid.UUID       `json:"aggregate_id"`
 	EventType    string          `json:"event_type"`
 	Payload      json.RawMessage `json:"payload"`
+	MessageID    uuid.UUID       `json:"message_id"`
 	CreatedAt    time.Time       `json:"created_at"`
 	ProcessedAt  sql.NullTime    `json:"processed_at"`
 	AttemptCount int32           `json:"attempt_count"`

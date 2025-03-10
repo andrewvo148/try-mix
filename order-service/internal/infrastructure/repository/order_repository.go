@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"order-service/internal/app/ports"
 	"order-service/internal/domain"
 	"order-service/internal/infrastructure/sqlc"
 	"strconv"
@@ -15,20 +14,32 @@ import (
 
 // OrderRepository implements the OrderRepository interface using SQLC and PostgresSQL
 type OrderRepository struct {
+	tx      *sql.Tx
 	queries *sqlc.Queries
 }
 
 // NewOrderRepository creates a new order repository
-func NewOrderRepository(tx *sql.Tx) ports.OrderRepository {
+func NewOrderRepository(db *sql.DB) domain.OrderRepository {
 	return &OrderRepository{
+		queries: sqlc.New(db),
+	}
+}
+
+func OrderRepositoryWithTx(tx *sql.Tx) domain.OrderRepository {
+	return &OrderRepository{
+		tx:      tx,
 		queries: sqlc.New(tx),
 	}
 }
 
+
+
 // Create persists a new order to the database
 func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error {
-
 	// Insert order
+	// if r.tx != {
+
+	// }
 	err := r.queries.CreateOrder(ctx, sqlc.CreateOrderParams{
 		ID:         order.ID,
 		CustomerID: order.CustomerID,
@@ -62,7 +73,6 @@ func (r *OrderRepository) Create(ctx context.Context, order *domain.Order) error
 
 // GetByID retrieves an order by its ID
 func (r *OrderRepository) GetByID(ctx context.Context, id string) (*domain.Order, error) {
-
 	// Validate UUID
 	uuid, err := uuid.Parse(id)
 	if err != nil {

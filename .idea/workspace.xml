@@ -4,20 +4,59 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6b0d5c0c-1ebc-4c99-9951-a9c31d190b17" name="Changes" comment="" />
+    <list default="true" id="6b0d5c0c-1ebc-4c99-9951-a9c31d190b17" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_1.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_2.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_3.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_4.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_5.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_6.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/shelf/Uncommitted_changes_before_rebase__Changes_7.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/cmd/order-service/main.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/cmd/order-service/main.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/config/config.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/db/migrations/000002_create_outbox_tables.up.sql" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/db/migrations/000002_create_outbox_tables.up.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/db/query/outbox_messages.sql" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/db/query/outbox_messages.sql" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/go.mod" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/go.mod" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/go.sum" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/go.sum" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/app/ports/repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/app/ports/repository.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/app/usecase/order_usecase.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/app/usecase/order_usecase.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/app/usecase/order_usecase_test.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/app/usecase/order_usecase_test.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/domain/outbox_message.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/domain/outbox_message.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/event/events.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/event/kafka.go" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/repository/order_repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/repository/order_repository.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/repository/outbox_repository.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/repository/outbox_repository.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/db.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/db.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/models.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/models.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/outbox_messages.sql.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/outbox_messages.sql.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/querier.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/sqlc/querier.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/infrastructure/unit_of_work/unit_of_work.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/infrastructure/unit_of_work/unit_of_work.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/interfaces/api/dto/order_dto.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/interfaces/api/dto/order_dto.go" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/order-service/internal/interfaces/api/handlers/order_handler.go" beforeDir="false" afterPath="$PROJECT_DIR$/order-service/internal/interfaces/api/handlers/order_handler.go" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ComposerSettings">
+    <execution />
   </component>
   <component name="GOROOT" url="file://$USER_HOME$/.gvm/pkgsets/go1.22.5/global/pkg/mod/golang.org/toolchain@v0.0.1-go1.23.7.linux-amd64" />
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
     <option name="RESET_MODE" value="MIXED" />
   </component>
-  <component name="ProjectColorInfo"><![CDATA[{
-  "associatedIndex": 5
-}]]></component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="PhpWorkspaceProjectConfiguration" interpreter_name="/opt/homebrew/Cellar/php/8.2.12_1/bin/php" />
+  <component name="ProjectColorInfo">{
+  &quot;associatedIndex&quot;: 5
+}</component>
   <component name="ProjectId" id="2tyIx2lLWEQJvK4rtpKNbqvRpiZ" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -25,14 +64,17 @@
   </component>
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.git.unshallow": "true",
     "RunOnceActivity.go.formatter.settings.were.checked": "true",
     "RunOnceActivity.go.migrated.go.modules.settings": "true",
+    "WebServerToolWindowFactoryState": "false",
     "git-widget-placeholder": "main",
     "go.import.settings.migrated": "true",
     "go.sdk.automatically.set": "true",
     "kotlin-language-version-configured": "true",
+    "last_opened_file_path": "/Users/hiepvo/src/try-mix",
     "node.js.detected.package.eslint": "true",
     "node.js.detected.package.tslint": "true",
     "node.js.selected.package.eslint": "(autodetect)",
@@ -46,7 +88,7 @@
       <module name="try-mix" />
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
-      <kind />
+      <kind value="FILE" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <method v="2" />
@@ -55,7 +97,7 @@
       <module name="try-mix" />
       <working_directory value="$PROJECT_DIR$" />
       <go_parameters value="-i" />
-      <kind />
+      <kind value="DIRECTORY" />
       <directory value="$PROJECT_DIR$" />
       <filePath value="$PROJECT_DIR$" />
       <framework value="gotest" />
@@ -79,6 +121,7 @@
       <option name="presentableId" value="Default" />
       <updated>1741318130538</updated>
       <workItem from="1741318131734" duration="1694000" />
+      <workItem from="1741509661404" duration="26000" />
     </task>
     <servers />
   </component>

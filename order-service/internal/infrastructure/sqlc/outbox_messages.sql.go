@@ -29,7 +29,7 @@ INSERT INTO outbox_messages (
 
 type CreateOutboxMessageParams struct {
 	ID          uuid.UUID       `json:"id"`
-	AggregateID string          `json:"aggregate_id"`
+	AggregateID uuid.UUID       `json:"aggregate_id"`
 	EventType   string          `json:"event_type"`
 	Payload     json.RawMessage `json:"payload"`
 	CreatedAt   time.Time       `json:"created_at"`
@@ -59,7 +59,7 @@ func (q *Queries) DeleteOutboxMessage(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOutboxMessageByID = `-- name: GetOutboxMessageByID :one
-SELECT id, aggregate_id, event_type, payload, created_at, processed_at, attempt_count, status, error_message
+SELECT id, aggregate_id, event_type, payload, message_id, created_at, processed_at, attempt_count, status, error_message
 FROM outbox_messages
 WHERE id = $1
 `
@@ -72,6 +72,7 @@ func (q *Queries) GetOutboxMessageByID(ctx context.Context, id uuid.UUID) (Outbo
 		&i.AggregateID,
 		&i.EventType,
 		&i.Payload,
+		&i.MessageID,
 		&i.CreatedAt,
 		&i.ProcessedAt,
 		&i.AttemptCount,
@@ -82,7 +83,7 @@ func (q *Queries) GetOutboxMessageByID(ctx context.Context, id uuid.UUID) (Outbo
 }
 
 const getPendingOutboxMessages = `-- name: GetPendingOutboxMessages :many
-SELECT id, aggregate_id, event_type, payload, created_at, processed_at, attempt_count, status, error_message
+SELECT id, aggregate_id, event_type, payload, message_id, created_at, processed_at, attempt_count, status, error_message
 FROM outbox_messages
 WHERE status = 'pending'
 ORDER BY created_at ASC
@@ -103,6 +104,7 @@ func (q *Queries) GetPendingOutboxMessages(ctx context.Context, limit int32) ([]
 			&i.AggregateID,
 			&i.EventType,
 			&i.Payload,
+			&i.MessageID,
 			&i.CreatedAt,
 			&i.ProcessedAt,
 			&i.AttemptCount,
@@ -120,6 +122,17 @@ func (q *Queries) GetPendingOutboxMessages(ctx context.Context, limit int32) ([]
 		return nil, err
 	}
 	return items, nil
+}
+
+const incrementAttempt = `-- name: IncrementAttempt :exec
+UPDATE outbox_messages
+SET attempt_count = attempt_count + 1
+WHERE id = $1
+`
+
+func (q *Queries) IncrementAttempt(ctx context.Context, id uuid.UUID) error {
+	_, err := q.exec(ctx, q.incrementAttemptStmt, incrementAttempt, id)
+	return err
 }
 
 const markOutboxMessageFailed = `-- name: MarkOutboxMessageFailed :exec

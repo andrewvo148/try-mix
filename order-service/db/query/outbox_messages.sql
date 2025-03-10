@@ -38,3 +38,10 @@ WHERE id = $1;
 -- name: DeleteOutboxMessage :exec
 DELETE FROM outbox_messages
 WHERE id = $1;
+
+
+-- name: IncrementAttempt :exec
+UPDATE outbox_messages
+SET attempt_count = attempt_count + 1
+WHERE id = $1;
+    

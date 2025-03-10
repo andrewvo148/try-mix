@@ -16,11 +16,12 @@ const (
 
 // OutputMessage represents a message in the outbox queue
 type OutboxMessage struct {
-	ID          uuid.UUID
-	AggregateID string
-	Type        string
-	Payload     []byte
-	Status      OutboxStatus
-	CreatedAt   time.Time
-	ProcessedAt time.Time
+	ID           uuid.UUID
+	AggregateID  uuid.UUID
+	EventType    string
+	Payload      []byte
+	Status       OutboxStatus
+	AttemptCount int
+	CreatedAt    time.Time
+	ProcessedAt  time.Time
 }

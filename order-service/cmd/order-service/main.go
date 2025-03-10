@@ -11,11 +11,17 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang-migrate/migrate/v4"
+	"github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	_ "github.com/lib/pq"
 
-	"order-service/config"
 	"order-service/internal/app/usecase"
+	"order-service/internal/infrastructure/config"
+	"order-service/internal/infrastructure/messaging/kafka"
 	"order-service/internal/infrastructure/repository"
+	unitofwork "order-service/internal/infrastructure/unit_of_work"
+	"order-service/internal/infrastructure/worker"
 	"order-service/internal/interfaces/api/handlers"
 	"order-service/internal/interfaces/api/router"
 )
@@ -28,7 +34,7 @@ func main() {
 	}
 
 	// Connect to database
-	dbConn, err := sql.Open("postgres", cfg.DatabaseURL)
+	dbConn, err := sql.Open("postgres", cfg.Database.URL)
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
@@ -40,10 +46,24 @@ func main() {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
 
-	// Initialize dependencies
+	// run migrations
+	// Run database migrations
+	if err := runMigrations(dbConn, cfg.Database.MigrationsPath); err != nil {
+		log.Fatalf("Failed to run migrations: %v", err)
+	}
 
+	// Initialize kafka producer
+	producer, err := kafka.NewEventPublisher(cfg.Kafka)
+	if err != nil {
+		log.Fatalf("Failed to create Kafka producer: %v", err)
+	}
+
+	// Initialize dependencies
+	workOfUnit := unitofwork.NewUnitOfWork(dbConn)
 	orderRepo := repository.NewOrderRepository(dbConn)
-	orderUseCase := usecase.NewOrderUseCase(orderRepo)
+	outboxRepo := repository.NewOutboxRepository(dbConn)
+
+	orderUseCase := usecase.NewOrderUseCase(workOfUnit, orderRepo, outboxRepo, producer)
 	orderHandler := handlers.NewOrderHandler(orderUseCase)
 
 	// Setup router
@@ -51,7 +71,7 @@ func main() {
 
 	// Configure server
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", cfg.ServerPort),
+		Addr:         fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler:      r,
 		ReadTimeout:  15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -59,11 +79,27 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Starting server on port %d", cfg.ServerPort)
+		log.Printf("Starting server on port %d", cfg.Server.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed to start: %v", err)
 		}
 	}()
+
+	// Create the outbox worker
+	worker := worker.NewOutboxProcessor(
+		outboxRepo,
+		producer,
+
+		100,
+		5*time.Second,
+		3,
+	)
+
+	// Start the worker with context for graceful shutdown
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	go worker.Start(ctx)
 
 	// Wait for interrup signal to gracefully shut down the server
 	quit := make(chan os.Signal, 1)
@@ -72,7 +108,7 @@ func main() {
 	log.Println("Shutting down server...")
 
 	// Create a deadline for server shutdown
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel = context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := server.Shutdown(ctx); err != nil {
@@ -80,4 +116,26 @@ func main() {
 	}
 
 	log.Println("Server exited properly")
+}
+
+// runMigrations runs the database migrations from the specified path
+func runMigrations(db *sql.DB, migrationsPath string) error {
+	driver, err := postgres.WithInstance(db, &postgres.Config{})
+	if err != nil {
+		return fmt.Errorf("failed to create migration driver: %w", err)
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		fmt.Sprintf("file://%s", migrationsPath),
+		"postgres", driver)
+	if err != nil {
+		return fmt.Errorf("failed to create migration instance: %w", err)
+	}
+
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", err)
+	}
+
+	log.Println("Database migrations completed successfully")
+	return nil
 }

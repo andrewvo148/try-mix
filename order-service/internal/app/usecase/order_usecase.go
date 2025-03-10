@@ -2,12 +2,14 @@ package usecase
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"order-service/internal/app/ports"
 	"order-service/internal/domain"
-	"order-service/internal/event"
+	event "order-service/internal/events"
+	"order-service/internal/infrastructure/repository"
 	"time"
 
 	"github.com/google/uuid"
@@ -19,14 +21,48 @@ type OrderUseCase struct {
 	uow            ports.UnitOfWork
 }
 
+// AddOrderItem implements ports.OrderUseCase.
+func (uc *OrderUseCase) AddOrderItem(ctx context.Context, orderID string, productID string, quantity int32, price float64) error {
+	panic("unimplemented")
+}
+
+// CancelOrder implements ports.OrderUseCase.
+func (uc *OrderUseCase) CancelOrder(ctx context.Context, id string) error {
+	panic("unimplemented")
+}
+
+// GetOrder implements ports.OrderUseCase.
+func (uc *OrderUseCase) GetOrder(ctx context.Context, id string) (*domain.Order, error) {
+	panic("unimplemented")
+}
+
+// ListOrders implements ports.OrderUseCase.
+func (uc *OrderUseCase) ListOrders(ctx context.Context, limit int, offset int) ([]*domain.Order, error) {
+	panic("unimplemented")
+}
+
+// RemoveOrderItem implements ports.OrderUseCase.
+func (uc *OrderUseCase) RemoveOrderItem(ctx context.Context, orderID string, itemID string) error {
+	panic("unimplemented")
+}
+
+// UpdateOrderStatus implements ports.OrderUseCase.
+func (uc *OrderUseCase) UpdateOrderStatus(ctx context.Context, id string, status domain.OrderStatus) error {
+	panic("unimplemented")
+}
+
 // NewOrderUseCase creates a new order use case
 func NewOrderUseCase(
 	uow ports.UnitOfWork,
+	orderRepo ports.OrderRepository,
+	outboxRepo ports.OutboxRepository,
 	eventPublisher ports.EventPublisher,
 ) *OrderUseCase {
 	return &OrderUseCase{
 		uow:            uow,
 		eventPublisher: eventPublisher,
+		orderRepo:      orderRepo,
+		outboxRepo:     outboxRepo,
 	}
 }
 
@@ -66,42 +102,50 @@ func (uc *OrderUseCase) CreateOrder(
 		return nil, fmt.Errorf("failed to marshal order created event: %w", err)
 	}
 
-	// Begin transaction
-	txCtx, err := uc.uow.Begin(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-
-	// Ensure transaction is either committed or rolled back
-	defer func() {
-		if err != nil {
-			// Rollback on error
-			if rbErr := uc.uow.Rollback(txCtx); rbErr != nil {
-				log.Printf("rollback error: %v", rbErr)
-			}
+	err = uc.uow.Execute(ctx, func(tx *sql.Tx) error {
+		// Create order
+		repository.NewOrderRepository(sq)
+		if err := uc.orderRepo.Create(ctx, order); err != nil {
+			return fmt.Errorf("failed to create order: %w", err)
 		}
-	}()
 
-	// Create order
-	if err = uc.uow.Orders().Create(txCtx, order); err != nil {
-		return nil, fmt.Errorf("failed to create order: %w", err)
+		if err = uc.outboxRepo.CreateMessage(
+			ctx,
+			order.ID,
+			"order.created",
+			eventPayload,
+		); err != nil {
+			return fmt.Errorf("failed to create outbox message: %w", err)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, err
 	}
-
-	// Create outbox message
-	if err = uc.uow.OutboxMessages().CreateMessage(
-		txCtx,
-		order.ID.String(),
-		"order.created",
-		eventPayload,
-	); err != nil {
-		return nil, fmt.Errorf("failed to create outbox message: %w", err)
-	}
-
-	if err = uc.uow.Commit(txCtx); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+	// After transaction is committed, publish event to broker
+	// This is done outside the transaction for "at-least-once" delivery semantics
+	// If publishing fails, the event is still in the outbox table and can be published later by an outbox processor
+	err = uc.publishEvent(ctx, "order.created", orderCreatedEvent)
+	if err != nil {
+		// Log the error but don't fail the operation
+		// The outbox pattern ensures events will be delivered eventually
+		log.Printf("warning: failed to publish order.created event: %v", err)
 	}
 
 	return order, nil
+}
+
+// publishEvent publishes an event to the message broker
+func (uc *OrderUseCase) publishEvent(ctx context.Context, topic string, event interface{}) error {
+	// Publish the event to the message broker
+	err := uc.eventPublisher.Publish(ctx, topic, event)
+	if err != nil {
+		return fmt.Errorf("failed to publish event to broker: %w", err)
+	}
+
+	return nil
 }
 
 // // publishOrderCreatedEvent publishes an event to notify other services

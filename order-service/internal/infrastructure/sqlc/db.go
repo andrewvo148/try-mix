@@ -57,6 +57,9 @@ func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
 	if q.getPendingOutboxMessagesStmt, err = db.PrepareContext(ctx, getPendingOutboxMessages); err != nil {
 		return nil, fmt.Errorf("error preparing query GetPendingOutboxMessages: %w", err)
 	}
+	if q.incrementAttemptStmt, err = db.PrepareContext(ctx, incrementAttempt); err != nil {
+		return nil, fmt.Errorf("error preparing query IncrementAttempt: %w", err)
+	}
 	if q.listOrdersStmt, err = db.PrepareContext(ctx, listOrders); err != nil {
 		return nil, fmt.Errorf("error preparing query ListOrders: %w", err)
 	}
@@ -129,6 +132,11 @@ func (q *Queries) Close() error {
 			err = fmt.Errorf("error closing getPendingOutboxMessagesStmt: %w", cerr)
 		}
 	}
+	if q.incrementAttemptStmt != nil {
+		if cerr := q.incrementAttemptStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing incrementAttemptStmt: %w", cerr)
+		}
+	}
 	if q.listOrdersStmt != nil {
 		if cerr := q.listOrdersStmt.Close(); cerr != nil {
 			err = fmt.Errorf("error closing listOrdersStmt: %w", cerr)
@@ -199,6 +207,7 @@ type Queries struct {
 	getOrderItemsStmt              *sql.Stmt
 	getOutboxMessageByIDStmt       *sql.Stmt
 	getPendingOutboxMessagesStmt   *sql.Stmt
+	incrementAttemptStmt           *sql.Stmt
 	listOrdersStmt                 *sql.Stmt
 	markOutboxMessageFailedStmt    *sql.Stmt
 	markOutboxMessageProcessedStmt *sql.Stmt
@@ -220,6 +229,7 @@ func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 		getOrderItemsStmt:              q.getOrderItemsStmt,
 		getOutboxMessageByIDStmt:       q.getOutboxMessageByIDStmt,
 		getPendingOutboxMessagesStmt:   q.getPendingOutboxMessagesStmt,
+		incrementAttemptStmt:           q.incrementAttemptStmt,
 		listOrdersStmt:                 q.listOrdersStmt,
 		markOutboxMessageFailedStmt:    q.markOutboxMessageFailedStmt,
 		markOutboxMessageProcessedStmt: q.markOutboxMessageProcessedStmt,

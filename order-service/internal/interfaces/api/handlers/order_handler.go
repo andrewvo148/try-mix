@@ -13,6 +13,7 @@ import (
 // OrderHandler handles HTTP requests related to orders
 type OrderHandler struct {
 	orderUseCase ports.OrderUseCase
+	//logger       *logger.Logger
 }
 
 // NewOrderHandler creates a new order handler

@@ -3,56 +3,63 @@ package unitofwork
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
-	"order-service/internal/app/ports"
-	"order-service/internal/infrastructure/repository"
+	"log"
 )
 
 type UnitOfWork struct {
-	db         *sql.DB
-	tx         *sql.Tx
-	txFactory  TransactionFactory
-	orderRepo  ports.OrderRepository
-	outboxRepo ports.OutboxRepository
+	tx           *sql.Tx
+	db           *sql.DB
+	repositories map[string]interface{}
 }
 
-type TransactionFactory interface {
-	CreateTransaction(ctx context.Context, db *sql.DB) (*sql.Tx, error)
-}
-
-func (uow *UnitOfWork) Begin(ctx context.Context) error {
-	if uow.tx != nil {
-		return errors.New("transaction already in progress")
+func NewUnitOfWork(db *sql.DB) *UnitOfWork {
+	return &UnitOfWork{
+		db: db,
 	}
+}
 
-	tx, err := uow.txFactory.CreateTransaction(ctx, uow.db)
+// Execute runs a function within a transaction context
+func (uow *UnitOfWork) Execute(ctx context.Context, fn func(*sql.Tx) error) error {
+	// Create a new transaction
+	tx, err := uow.db.BeginTx(ctx, nil)
 	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
+		return fmt.Errorf("failed to create transaction: %w", err)
 	}
 
-	uow.tx = tx
-	uow.orderRepo = repository.NewOrderRepository(tx)
-	
+	// Ensure transaction is eventually rolled back or committed
+	defer func() {
+		if tx != nil {
+			err = tx.Rollback()
+			if err != nil {
+				log.Printf("rollback error: %v", err)
+			}
+		}
+	}()
+
+	// Execute the function within the transaction
+	if err = fn(tx); err != nil {
+		return err
+	}
+
+	// Commit the transaction
+	if err = tx.Commit(); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	// Prevent rollback in defer
+	tx = nil
 	return nil
+
 }
 
-func (uow *UnitOfWork) Commit(ctx context.Context) error {
-	if uow.tx == nil {
-		return errors.New("no active transaction")
+// Register a repository within the unit of work
+func (uow *UnitOfWork) RegisterRepository(name string, repository interface{}) {
+    uow.repositories[name] = repository
+}
+
+func (uow *UnitOfWork) GetRepository(name string) interface{} {
+	if uow.tx != nil {
+		return uow.repositories[name]
 	}
-	return uow.tx.Commit()
-
-}
-
-func (uow *UnitOfWork) Rollback(ctx context.Context) error {
-	if uow.tx == nil {
-		return errors.New("no active transaction")
-	}
-
-	return uow.tx.Rollback()
-}
-
-func (uow *UnitOfWork) orders() ports.OrderRepository {
-	return repository.NewOrderRepository(uow.tx)
 }

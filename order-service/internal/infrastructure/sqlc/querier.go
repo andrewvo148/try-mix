@@ -23,6 +23,7 @@ type Querier interface {
 	GetOrderItems(ctx context.Context, orderID uuid.UUID) ([]OrderItem, error)
 	GetOutboxMessageByID(ctx context.Context, id uuid.UUID) (OutboxMessage, error)
 	GetPendingOutboxMessages(ctx context.Context, limit int32) ([]OutboxMessage, error)
+	IncrementAttempt(ctx context.Context, id uuid.UUID) error
 	ListOrders(ctx context.Context, arg ListOrdersParams) ([]Order, error)
 	MarkOutboxMessageFailed(ctx context.Context, arg MarkOutboxMessageFailedParams) error
 	MarkOutboxMessageProcessed(ctx context.Context, arg MarkOutboxMessageProcessedParams) error
