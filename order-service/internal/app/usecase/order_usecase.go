@@ -54,16 +54,11 @@ func (uc *OrderUseCase) UpdateOrderStatus(ctx context.Context, id string, status
 // NewOrderUseCase creates a new order use case
 func NewOrderUseCase(
 	uow ports.UnitOfWork,
-	orderRepo ports.OrderRepository,
-	outboxRepo ports.OutboxRepository,
 	eventPublisher ports.EventPublisher,
 ) *OrderUseCase {
 	return &OrderUseCase{
 		uow:            uow,
-		eventPublisher: eventPublisher,
-		orderRepo:      orderRepo,
-		outboxRepo:     outboxRepo,
-	}
+		eventPublisher: eventPublisher}
 }
 
 // CreateOrder creates a new order with the given details
@@ -104,12 +99,13 @@ func (uc *OrderUseCase) CreateOrder(
 
 	err = uc.uow.Execute(ctx, func(tx *sql.Tx) error {
 		// Create order
-		repository.NewOrderRepository(sq)
-		if err := uc.orderRepo.Create(ctx, order); err != nil {
+		orderRepo := repository.OrderRepositoryWithTx(tx)
+		outboxRepo := repository.NewOutboxRepositoryWithTx(tx)
+		if err := orderRepo.Create(ctx, order); err != nil {
 			return fmt.Errorf("failed to create order: %w", err)
 		}
 
-		if err = uc.outboxRepo.CreateMessage(
+		if err = outboxRepo.CreateMessage(
 			ctx,
 			order.ID,
 			"order.created",

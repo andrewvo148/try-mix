@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"order-service/internal/app/ports"
 	"order-service/internal/domain"
 	"order-service/internal/infrastructure/sqlc"
 	"time"
@@ -18,21 +17,20 @@ type OutboxRepository struct {
 	queries *sqlc.Queries
 }
 
-func NewOutboxRepository(db *sql.DB) ports.OutboxRepository {
+func NewOutboxRepository(db *sql.DB) domain.OutboxRepository {
 	return &OutboxRepository{
 		queries: sqlc.New(db),
 	}
 }
 
-func (o *OutboxRepository) WithTx(tx *sql.Tx) ports.OutboxRepository {
+func NewOutboxRepositoryWithTx(tx *sql.Tx) domain.OutboxRepository {
 	return &OutboxRepository{
-		queries: o.queries.WithTx(tx),
+		queries: sqlc.New(tx),
 	}
 }
 
 // CreateMessage implements ports.OutboxRepository.
 func (o *OutboxRepository) CreateMessage(ctx context.Context, aggregateID uuid.UUID, messageType string, payload interface{}) error {
-
 	// Marshal the payload into JSON
 	jsonData, err := json.Marshal(payload)
 	if err != nil {

@@ -60,10 +60,10 @@ func main() {
 
 	// Initialize dependencies
 	workOfUnit := unitofwork.NewUnitOfWork(dbConn)
-	orderRepo := repository.NewOrderRepository(dbConn)
+	// orderRepo := repository.NewOrderRepository(dbConn)
 	outboxRepo := repository.NewOutboxRepository(dbConn)
 
-	orderUseCase := usecase.NewOrderUseCase(workOfUnit, orderRepo, outboxRepo, producer)
+	orderUseCase := usecase.NewOrderUseCase(workOfUnit, producer)
 	orderHandler := handlers.NewOrderHandler(orderUseCase)
 
 	// Setup router

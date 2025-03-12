@@ -9,6 +9,6 @@ import (
 type UnitOfWork interface {
 	// Execute the function within the transaction
 	Execute(ctx context.Context, fn func(*sql.Tx) error) error
-	RegisterRepository(tx *sql.Tx, repository interface{}) error
-	GetRepository() error
+	// RegisterRepository(tx *sql.Tx, repository interface{}) error
+	// GetRepository() error
 }
