@@ -5,22 +5,23 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"order-service/internal/app/ports"
 )
 
-type UnitOfWork struct {
-	tx           *sql.Tx
-	db           *sql.DB
-	repositories map[string]interface{}
+type SQLUnitOfWork struct {
+	db                 *sql.DB
+	repositoryCreators map[string]func(*sql.Tx) interface{}
 }
 
-func NewUnitOfWork(db *sql.DB) *UnitOfWork {
-	return &UnitOfWork{
-		db: db,
+func NewSQLUnitOfWork(db *sql.DB) *SQLUnitOfWork {
+	return &SQLUnitOfWork{
+		db:                 db,
+		repositoryCreators: make(map[string]func(*sql.Tx) interface{}),
 	}
 }
 
 // Execute runs a function within a transaction context
-func (uow *UnitOfWork) Execute(ctx context.Context, fn func(*sql.Tx) error) error {
+func (uow *SQLUnitOfWork) Execute(ctx context.Context, fn func(factory ports.RepositoryFactory) error) error {
 	// Create a new transaction
 	tx, err := uow.db.BeginTx(ctx, nil)
 	if err != nil {
@@ -37,8 +38,10 @@ func (uow *UnitOfWork) Execute(ctx context.Context, fn func(*sql.Tx) error) erro
 		}
 	}()
 
+	factory := &SQL
+
 	// Execute the function within the transaction
-	if err = fn(tx); err != nil {
+	if err = fn(f); err != nil {
 		return err
 	}
 
@@ -53,13 +56,7 @@ func (uow *UnitOfWork) Execute(ctx context.Context, fn func(*sql.Tx) error) erro
 
 }
 
-// Register a repository within the unit of work
-func (uow *UnitOfWork) RegisterRepository(name string, repository interface{}) {
-    uow.repositories[name] = repository
-}
-
-func (uow *UnitOfWork) GetRepository(name string) interface{} {
-	if uow.tx != nil {
-		return uow.repositories[name]
-	}
+type SQLRepositoryFactory struct {
+	tx                 *sql.Tx
+	repositoryCreators map[string]func(*sql.Tx) interface{}
 }
