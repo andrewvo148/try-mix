@@ -1,0 +1,53 @@
+# Application configuration
+environment: development
+log:
+  level: debug
+
+# Server configuration
+server:
+  port: 8089
+
+# Database configuration
+db:
+  host: localhost
+  port: 5432
+  user: postgres
+  pass: postgres
+  name: order_service
+  sslmode: disable
+migrations:
+  path: db/migrations
+
+# Kafka configuration
+kafka:
+  client_id: "order-service"
+  brokers: localhost:29092
+  connection_timeout: 15s
+  
+  producer:
+    retry_max: 5
+    retry_backoff: 200ms
+    message_timeout: 10s
+    required_acks: all
+  
+  consumer:
+    group_id: order-service-group
+    auto_offset_reset: earliest
+    heartbeat_interval: 3s
+    session_timeout: 45s
+    max_wait_time: 1s
+    min_fetch_bytes: 1
+    max_fetch_bytes: 2097152
+  
+  topics:
+    orders_created: orders-created
+    orders_updated: orders-updated
+    orders_cancelled: orders-cancelled
+    order_payments: order-payments
+  
+  security:
+    enabled: false
+    protocol: plaintext
+    sasl_mechanism: plain
+    sasl_username: ""
+    sasl_password: ""
